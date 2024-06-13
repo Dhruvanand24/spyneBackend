@@ -30,6 +30,10 @@ app.use("/api/v1/subscriptions", subscriptionRouter)
 app.use("/api/v1/comments", commentRouter)
 app.use("/api/v1/likes", likeRouter)
 app.use("/api/v1/posts", postRouter )
+app.get("/", (req, res) => {
+    res.send('<h1>Welcome</h1>');
+  });
+
 
 // http://localhost:8000/api/v1/users/register
 
