@@ -1,57 +1,90 @@
-import mongoose, {isValidObjectId} from "mongoose"
-import {User} from "../models/user.model.js"
-import { Follower } from "../models/follower.model.js"
-import {ApiError} from "../utils/ApiError.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
-import {asyncHandler} from "../utils/asyncHandler.js"
-
+import mongoose from "mongoose";
+import { User } from "../models/user.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const toggleFollow = asyncHandler(async (req, res) => {
-    const {userToFollow_id}= req.body;
-    const user= req.user;
-    const userToFollow= await User.findOne({_id:userToFollow_id})
+    const { userToFollow_id } = req.body;
+    const user = req.user;
 
-    if(!userToFollow){
-        throw new ApiError(400, "Invalid user to follow!!")
+    // Find the user to follow
+    const userToFollow = await User.findOne({ _id: userToFollow_id });
+
+    if (!userToFollow) {
+        throw new ApiError(400, "Invalid user to follow!!");
     }
 
-    const isfollowIndex= userToFollow.follower.findIndex(id => id.toString() ===user._id.toString());
-
+    // Check if user is already following/unfollowing
+    const isFollowed = userToFollow.follower?.includes(user?._id);
+    const isFollowing = user.following?.includes(userToFollow_id);
     let state;
-    if (isfollowIndex !== -1) {
-      // User ID exists, so remove it from the array
-      userToFollow.follower.splice(isfollowIndex, 1);
-      const isfollowingIndex= user.following.findIndex(id=> id.toString() ===userToFollow_id.toString());
+    // Update user's following and userToFollow's followers
+    if (isFollowed && isFollowing) {
+        // Unfollow
+        const userIndex = user.following.indexOf(userToFollow_id);
+        const userToFollowIndex = userToFollow.follower.indexOf(user._id);
 
-      user.following.splice(isfollowingIndex,1);
-      console.log("user unfollowed")
-      state= 'unfollwed'
+        if (userIndex > -1) user.following.splice(userIndex, 1);
+        if (userToFollowIndex > -1) userToFollow.follower.splice(userToFollowIndex, 1);
+        
+        console.log("User unfollowed");
+        state = 'unfollowed';
     } else {
-      // User ID does not exist, so add it to the array (if you want to handle toggling)
-      user.following.push(userToFollow_id.toString());
-      userToFollow.follower.push(user._id.toString());
-      console.log("user follwed")
-      state='followed'
+        // Follow
+        user.following.push(userToFollow_id);
+        userToFollow?.follower?.push(user._id);
+
+        console.log("User followed");
+        state = 'followed';
     }
 
-    await user.save();
-    await userToFollow.save();
+    // Save both users
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    return res.status(201).json(new ApiResponse(200,{ user, userToFollow}, `user ${state} successfully!!`))
-})
+    try {
+        await user.save({ session });
+        await userToFollow.save({ session });
 
-// controller to return subscriber list of a channel
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.status(200).json(new ApiResponse(200, { user, userToFollow }, `User ${state} successfully!!`));
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+
+        throw new ApiError(500, "Failed to toggle follow");
+    }
+});
+
 const getUserFollowers = asyncHandler(async (req, res) => {
-    const {userId} = req.params
-})
+    const { userId } = req.params;
 
-// controller to return channel list to which user has subscribed
+    const user = await User.findById(userId)
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, user.followers, "User followers fetched successfully"));
+});
+
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const { subscriberId } = req.params
-})
+    const { subscriberId } = req.params;
+
+    const user = await User.findById(subscriberId)
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, user.following, "User subscriptions fetched successfully"));
+});
 
 export {
     toggleFollow,
     getUserFollowers,
     getSubscribedChannels
-}
+};

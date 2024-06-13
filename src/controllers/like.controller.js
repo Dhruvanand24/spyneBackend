@@ -6,10 +6,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { Post } from "../models/post.model.js";
 import { Comment } from "../models/comment.model.js";
 
-const toggleVideoLike = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
-  //TODO: toggle like on video
-});
+
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
   const { comment_id } = req.params;
@@ -60,6 +57,7 @@ const toggleReplyLike = asyncHandler(async (req, res) => {
   }
 
   const reply = comment.replies.id(reply_id);
+  console.log(reply)
 
   if (!reply) {
     throw new ApiError(400, "No Reply Found Related to given id!!");
@@ -87,15 +85,12 @@ const toggleReplyLike = asyncHandler(async (req, res) => {
   return res.status(201).json(new ApiResponse(200, comment, `Reply ${state} Successfully!!`));
 });
 
-const toggleTweetLike = asyncHandler(async (req, res) => {
-  const { tweetId } = req.params;
-  //TODO: toggle like on tweet
-});
+
 
 const getPostLike = asyncHandler(async (req, res) => {
   const { post_id } = req.body;
 
-  const allPosts = await Like.find({ post: post_id }).populate("likedBy");
+  const allPosts = await Like.find({ post: post_id })
 
   const likeCount = await Like.aggregate([
     {
@@ -161,8 +156,6 @@ const togglePostLike = asyncHandler(async (req, res) => {
 });
 export {
   toggleCommentLike,
-  toggleTweetLike,
-  toggleVideoLike,
   getPostLike,
   togglePostLike,
   toggleReplyLike

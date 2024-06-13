@@ -20,9 +20,7 @@ const getPostComments = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Post!");
   }
 
-  const allPostComments = await Comment.find({ post: post_id }).populate(
-    "commentBy"
-  );
+  const allPostComments = await Comment.find({ post: post_id })
 
   return res
     .status(201)
@@ -34,19 +32,19 @@ const getPostComments = asyncHandler(async (req, res) => {
 const addComment = asyncHandler(async (req, res) => {
 
   
-  // TODO: add a comment to a video
+  
   const { content } = req.body;
   const { post_id } = req.params;
-  const user = req.user;
+  const user = req.user._id;
 
   if ([content, post_id].some((fields) => fields.trim("") === "")) {
     throw new ApiError(400, "Can't get Comment content and Post Id!");
   }
-
+  
   const newComment = await Comment.create({
     content,
     post: post_id,
-    commentBy: user._id,
+    commentBy: user,
   });
 
   if (!newComment) {
@@ -54,7 +52,7 @@ const addComment = asyncHandler(async (req, res) => {
   }
   return res
     .status(201)
-    .json(new ApiResponse(200, newComment, "Comment added successfull!!"));
+    .json(new ApiResponse(200, "Comment added successfull!!"));
 });
 
 const replyToComment = asyncHandler(async (req, res) => {
@@ -78,16 +76,60 @@ const replyToComment = asyncHandler(async (req, res) => {
   comment.replies.push(newReply);
   await comment.save();
 
-  return res.status(201).json(new ApiResponse(201, comment, "Reply added successfully"));
+  return res.status(201).json(new ApiResponse(201, "Reply added successfully"));
 });
 
 
 const updateComment = asyncHandler(async (req, res) => {
-  // TODO: update a comment
+  const { commentId } = req.params;
+  const { content } = req.body;
+  const userId = req.user._id;
+
+  if (!mongoose.isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid Comment ID");
+  }
+
+  if (!content) {
+    throw new ApiError(400, "Comment content is required");
+  }
+
+  const comment = await Comment.findById(commentId);
+
+  if (!comment) {
+    throw new ApiError(404, "Comment not found");
+  }
+
+  if (comment.commentBy.toString() !== userId.toString()) {
+    throw new ApiError(403, "User not authorized to update this comment");
+  }
+
+  comment.content = content;
+  await comment.save();
+
+  return res.status(200).json(new ApiResponse(200, comment, "Comment updated successfully"));
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-  // TODO: delete a comment
+  const { commentId } = req.params;
+  const userId = req.user._id;
+
+  if (!mongoose.isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid Comment ID");
+  }
+
+  const comment = await Comment.findById(commentId);
+
+  if (!comment) {
+    throw new ApiError(404, "Comment not found");
+  }
+
+  if (comment.commentBy.toString() !== userId.toString()) {
+    throw new ApiError(403, "User not authorized to delete this comment");
+  }
+
+  await Comment.findByIdAndDelete(commentId);
+
+  return res.status(200).json(new ApiResponse(200, null, "Comment deleted successfully"));
 });
 
 export {

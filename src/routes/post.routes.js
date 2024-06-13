@@ -27,7 +27,7 @@ router
     publishAPost
   );
 
-router.route("/getpost/:postID").get(getPostById);
+router.route("/getpost").post(getPostById);
 
 router.route("/updatepost").post(
   upload.fields([
@@ -39,7 +39,7 @@ router.route("/updatepost").post(
   updatePost
 );
 
-router.route("/deletepost/:postID").delete(deletePost);
+router.route("/deletepost").delete(deletePost);
 
 router.route("/postbytags").post(getPostsByTags);
 router.route("/postbytext").post(getPostsByText);

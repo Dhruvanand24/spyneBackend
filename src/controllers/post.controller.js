@@ -69,13 +69,13 @@ const publishAPost = asyncHandler(async (req, res) => {
 });
 
 const getPostById = asyncHandler(async (req, res) => {
-    const { postID } = req.params;
+    const { postID } = req.body;
 
     if (!isValidObjectId(postID)) {
         throw new ApiError(400, "Invalid Post ID");
     }
 
-    const post = await Post.findById(postID).populate('owner', 'username');
+    const post = await Post.findById(postID)
 
     if (!post) {
         throw new ApiError(404, "Post not found");
@@ -103,11 +103,19 @@ const updatePost = asyncHandler(async (req, res) => {
     if (!postData) {
         throw new ApiError(404, "Post not found");
     }
-
-    const updateData = {
+    let updateData;
+    if(!hashtags){
+        updateData = {
+            textfield,
+        };
+    
+    }
+    else{
+    updateData = {
         textfield,
         hashtags: hashtagsArray
-    };
+    }
+};
 
     if (req.files?.image?.[0]?.path) {
         const imageLocalPath = req.files.image[0].path;
@@ -132,7 +140,7 @@ const updatePost = asyncHandler(async (req, res) => {
 });
 
 const deletePost = asyncHandler(async (req, res) => {
-    const { postID } = req.params;
+    const { postID } = req.body;
     const userId = req.user?._id;
 
     if (!isValidObjectId(postID)) {
